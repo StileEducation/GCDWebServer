@@ -38,7 +38,7 @@
 #import "GCDWebServerPrivate.h"
 
 #define kHeadersReadCapacity (1 * 1024)
-#define kBodyReadCapacity (256 * 1024)
+#define kBodyReadCapacity (4 * 1024)
 
 typedef void (^ReadDataCompletionBlock)(BOOL success);
 typedef void (^ReadHeadersCompletionBlock)(NSData* extraData);
@@ -464,6 +464,9 @@ static inline NSUInteger _ScanHexNumber(const void* bytes, NSUInteger size) {
     return;
   }
   
+  // Immediately start processing request so it can stream body
+  [self _startProcessingRequest];
+  
   if (initialData.length) {
     if (![_request performWriteData:initialData error:&error]) {
       GWS_LOG_ERROR(@"Failed writing request body on socket %i: %@", _socket, error);
@@ -481,7 +484,7 @@ static inline NSUInteger _ScanHexNumber(const void* bytes, NSUInteger size) {
       
       NSError* localError = nil;
       if ([_request performClose:&localError]) {
-        [self _startProcessingRequest];
+//        [self _startProcessingRequest];
       } else {
         GWS_LOG_ERROR(@"Failed closing request body for socket %i: %@", _socket, error);
         [self abortRequest:_request withStatusCode:kGCDWebServerHTTPStatusCode_InternalServerError];
@@ -490,7 +493,7 @@ static inline NSUInteger _ScanHexNumber(const void* bytes, NSUInteger size) {
     }];
   } else {
     if ([_request performClose:&error]) {
-      [self _startProcessingRequest];
+//      [self _startProcessingRequest];
     } else {
       GWS_LOG_ERROR(@"Failed closing request body for socket %i: %@", _socket, error);
       [self abortRequest:_request withStatusCode:kGCDWebServerHTTPStatusCode_InternalServerError];
@@ -506,12 +509,15 @@ static inline NSUInteger _ScanHexNumber(const void* bytes, NSUInteger size) {
     return;
   }
   
+    // Immediately start processing request so it can stream body
+    [self _startProcessingRequest];
+
   NSMutableData* chunkData = [[NSMutableData alloc] initWithData:initialData];
   [self _readNextBodyChunk:chunkData completionBlock:^(BOOL success) {
   
     NSError* localError = nil;
     if ([_request performClose:&localError]) {
-      [self _startProcessingRequest];
+//      [self _startProcessingRequest];
     } else {
       GWS_LOG_ERROR(@"Failed closing request body for socket %i: %@", _socket, error);
       [self abortRequest:_request withStatusCode:kGCDWebServerHTTPStatusCode_InternalServerError];
